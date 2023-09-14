@@ -1,34 +1,28 @@
-use std::io::prelude::*;
-use std::net::TcpStream;
-use std::net::TcpListener;
-use std::fs::File;
+use actix_web::{App, get, HttpResponse, HttpServer, post, Responder, web};
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
-
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
-
-        handle_connection(stream);
-    }
+#[get("/")]
+async fn hello() -> impl Responder {
+    HttpResponse::Ok().body("Hello World!")
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let mut buffer = [0; 512];
-    stream.read(&mut buffer).unwrap();
-
-    let mut file = File::open("hello.html").unwrap();
-
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-
-    let response = format!(
-        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
-        contents.len(),
-        contents
-    );
-
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+#[post("/echo")]
+async fn echo(request_body: String) -> impl Responder {
+    HttpResponse::Ok().body(request_body)
 }
 
+async fn manual_hello() -> impl Responder {
+    HttpResponse::Ok().body("Hey there!")
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .service(hello)
+            .service(echo)
+            .route("/hey", web::get().to(manual_hello))
+    })
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
+}
